@@ -50,15 +50,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     public Result sendCode(String phone, HttpSession session) {
         // 1.校验手机号
             if (RegexUtils.isPhoneInvalid(phone)) {
-                // 2.如果不符合，返回错误信息
+                // 如果不符合，返回错误信息
                 return Result.fail("手机号格式错误！");
         }
-        // 3.符合，生成验证码
+        // 2.符合，生成验证码
         String code = RandomUtil.randomNumbers(6);
 
-        // 4.保存验证码到redis
+        // 3.保存验证码到redis
         stringRedisTemplate.opsForValue().set(RedisConstants.LOGIN_CODE_KEY +phone,code,2, TimeUnit.MINUTES);
-        // 5.发送验证码
+        // 4.发送验证码
         log.debug("发送短信验证码成功，验证码：{}", code);
         // 返回ok
         return Result.ok();
@@ -69,27 +69,27 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         // 1.校验手机号
         String phone = loginForm.getPhone();
         if (RegexUtils.isPhoneInvalid(phone)) {
-            // 2.如果不符合，返回错误信息1
+            // 如果不符合，返回错误信息1
             return Result.fail("手机号格式错误！");
         }
 
-        // 3.校验验证码
+        // 2.校验验证码
         String cacheCode = stringRedisTemplate.opsForValue().get(RedisConstants.LOGIN_CODE_KEY + phone);
         String code = loginForm.getCode();
         if(cacheCode == null || !cacheCode.equals(code)){
-            //3.不一致，报错
+            //不一致，报错
             return Result.fail("验证码错误");
         }
 
-        //一致，根据手机号查询用户
+        //3.一致，根据手机号查询用户
         User user = query().eq("phone", phone).one();
 
-        //5.判断用户是否存在
+        //4.判断用户是否存在
         if(user == null){
             //不存在，则创建
             user =  createUserWithPhone(phone);
         }
-        //7.保存用户信息到redis中
+        //5.保存用户信息到redis中
         String token = UUID.randomUUID().toString(true);
         UserDTO userDTO = BeanUtil.copyProperties(user, UserDTO.class);
 
@@ -102,6 +102,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         stringRedisTemplate.opsForHash().putAll(tokenKey,userMap);
 
         stringRedisTemplate.expire(tokenKey,RedisConstants.LOGIN_USER_TTL,TimeUnit.MINUTES);
+        //6.返回token
         return Result.ok(token);
     }
 

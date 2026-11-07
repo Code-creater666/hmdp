@@ -23,10 +23,11 @@ public class RefreshTokenInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         // 1.获取请求头中的token
         String token = request.getHeader("authorization");
+        //2.判断token是否为空格
         if (StrUtil.isBlank(token)){
             return true;
         }
-
+        //3.不为空则将map转为对象
         String key = RedisConstants.LOGIN_USER_KEY + token;
         Map<Object, Object> userMap = stringRedisTemplate.opsForHash().entries(key);
         if (userMap.isEmpty()) {
@@ -34,6 +35,7 @@ public class RefreshTokenInterceptor implements HandlerInterceptor {
         }
         UserDTO userDTO = BeanUtil.fillBeanWithMap(userMap, new UserDTO(), false);
         UserHolder.saveUser(userDTO);
+        //4.更新过期时间
         stringRedisTemplate.expire(key,RedisConstants.LOGIN_USER_TTL, TimeUnit.MINUTES);
         return true;
     }

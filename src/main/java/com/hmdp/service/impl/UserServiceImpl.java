@@ -49,9 +49,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     @Override
     public Result sendCode(String phone, HttpSession session) {
         // 1.校验手机号
-        if (RegexUtils.isPhoneInvalid(phone)) {
-            // 2.如果不符合，返回错误信息
-            return Result.fail("手机号格式错误！");
+            if (RegexUtils.isPhoneInvalid(phone)) {
+                // 2.如果不符合，返回错误信息
+                return Result.fail("手机号格式错误！");
         }
         // 3.符合，生成验证码
         String code = RandomUtil.randomNumbers(6);
@@ -101,7 +101,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         String tokenKey = LOGIN_USER_KEY + token;
         stringRedisTemplate.opsForHash().putAll(tokenKey,userMap);
 
-        stringRedisTemplate.expire(token,RedisConstants.LOGIN_USER_TTL,TimeUnit.MINUTES);
+        stringRedisTemplate.expire(tokenKey,RedisConstants.LOGIN_USER_TTL,TimeUnit.MINUTES);
         return Result.ok(token);
     }
 

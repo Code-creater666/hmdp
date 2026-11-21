@@ -1,16 +1,23 @@
 package com.hmdp;
 
+import com.hmdp.entity.Shop;
 import com.hmdp.service.impl.ShopServiceImpl;
 
 import com.hmdp.utils.RedisIDWorker;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.geo.Point;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
 import javax.annotation.Resource;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 @SpringBootTest
 class HmDianPingApplicationTests {
@@ -20,6 +27,10 @@ class HmDianPingApplicationTests {
 
     @Resource
     private RedisIDWorker redisIDWorker;
+
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
+
     @Test
     void testSavaShop() throws InterruptedException {
             shopService.savaShop2Redis(2L,10L);
@@ -47,5 +58,22 @@ class HmDianPingApplicationTests {
         System.out.println("time = " + (end - begin));
     }
 
+    @Test
+    void loadShopData(){
+        //查询商铺信息
+        List<Shop> list = shopService.list();
+        //按照商铺类型分组
+        Map<Long,List<Shop>> map = list.stream().collect(Collectors.groupingBy(Shop::getTypeId));
+        //分批写入redis
+        for (Map.Entry<Long, List<Shop>> entry : map.entrySet()) {
+            Long id = entry.getKey();
+            String key = "shop:geo:" + id;
+            List<Shop> value = entry.getValue();
+
+            for (Shop shop : value) {
+                stringRedisTemplate.opsForGeo().add(key,new Point(shop.getX(),shop.getY()),shop.getId().toString());
+            }
+        }
+    }
 
 }

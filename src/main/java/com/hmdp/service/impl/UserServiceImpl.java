@@ -14,14 +14,19 @@ import com.hmdp.service.IUserService;
 import com.hmdp.utils.RedisConstants;
 import com.hmdp.utils.RegexUtils;
 import com.hmdp.utils.SystemConstants;
+import com.hmdp.utils.UserHolder;
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.data.redis.connection.BitFieldSubCommands;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpSession;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -102,6 +107,69 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         stringRedisTemplate.expire(tokenKey,RedisConstants.LOGIN_USER_TTL,TimeUnit.MINUTES);
         //6.返回token
         return Result.ok(token);
+    }
+
+    /**
+     *签到
+     * @return
+     */
+    @Override
+    public Result sign() {
+        //获取当前用户
+        Long userId = UserHolder.getUser().getId();
+        //获取当前日期
+        LocalDateTime now = LocalDateTime.now();
+        String keySuffix = now.format(DateTimeFormatter.ofPattern(":yyyyMM"));
+        //得到key
+        String key = "sign:" + userId + keySuffix;
+        //获取今天是本月第几天
+        int day = now.getDayOfMonth();
+        //写入redis，setbit key offset 1
+        stringRedisTemplate.opsForValue().setBit(key,day-1,true);
+        return Result.ok();
+    }
+
+    /**
+     * 签到统计
+     * @return
+     */
+    @Override
+    public Result signCount() {
+        //获取当前用户
+        Long userId = UserHolder.getUser().getId();
+        //获取当前日期
+        LocalDateTime now = LocalDateTime.now();
+        String keySuffix = now.format(DateTimeFormatter.ofPattern(":yyyyMM"));
+        //得到key
+        String key = "sign:" + userId + keySuffix;
+        //获取今天是本月第几天
+        int day = now.getDayOfMonth();
+        //获取本月截至今天为止的签到记录,返回十进制数字
+        List<Long> result = stringRedisTemplate.opsForValue().bitField(
+                key,
+                BitFieldSubCommands.create().get(BitFieldSubCommands.BitFieldType.unsigned(day)).valueAt(0)
+        );
+        if (result==null || result.isEmpty()){
+            return Result.ok(0);
+        }
+        Long num = result.get(0);
+        if (num==null || num==0){
+            return Result.ok(0);
+        }
+        //遍历与1做与运算
+        int count = 0;
+        while (true){
+            if ((num & 1)==0) {
+                //为0则结束
+                break;
+            }else {
+                //为1则计数器加1
+                count++;
+            }
+            //数字右移1位，继续下一个bit位
+            num>>>=1;
+        }
+        return Result.ok(count);
     }
 
     private User createUserWithPhone(String phone) {

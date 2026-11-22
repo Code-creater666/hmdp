@@ -75,5 +75,19 @@ class HmDianPingApplicationTests {
             }
         }
     }
+    @Test
+    void UVCount(){
+        String[] values = new String[1000];
+        int j = 0;
+        for (int i = 0; i < 100000; i++) {
+            j = i % 1000;
+            values[j] = "user_" + i;
+            if (j==999){
+                stringRedisTemplate.opsForHyperLogLog().add("hl",values);
+            }
+        }
+        Long hl = stringRedisTemplate.opsForHyperLogLog().size("hl");
+        System.out.println(hl);
+    }
 
 }
